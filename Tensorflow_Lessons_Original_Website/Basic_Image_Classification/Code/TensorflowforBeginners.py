@@ -3,23 +3,33 @@ import numpy as np
 import matplotlib.pyplot as plt
 import keras
 
+# İlk olarak Fashion MNIST datasetini tensorflow içinden yükleyerek başlıyoruz.
+# Çekmiş olduğumuz bu dataset'i numpy içinden dört farklı array içine atıyoruz.
 fashion_mnist = tf.keras.datasets.fashion_mnist
-
 (train_images, train_labels), (test_images, test_labels) = fashion_mnist.load_data()
 
+# Gelen datasat içindeki resimleri adlandırmak için gerekli tag'ları (liste şeklinde) oluşturuyoz.
 class_names = ['T-shirt/top', 'Trouser', 'Pullover', 'Dress', 'Coat',
                'Sandal', 'Shirt', 'Sneaker', 'Bag', 'Ankle boot']
 
+
+# Veri seti içindeki ilk elmanı ekrana yazdırıyoz.
+"""
 plt.figure()
 plt.imshow(train_images[0])
 plt.colorbar()
 plt.grid(False)
 plt.show()
+"""
 
+
+# Elimizde bulunan eğitim array'lerini işlemek için (0 ve 1 arasında olması için) gerekli işlemleri gerçekleştiriyoruz.
 train_images = train_images / 255.0
 test_images = test_images / 255.0
 
 
+ # Verilerin gerekli şekilde eğitilip eğitilmediğini kontrol etmek amacıyla ilk 25 veriyi ekrana çıkartıyoruz.
+"""
 plt.figure(figsize=(10,10))
 for i in range(25):
     plt.subplot(5,5,i+1)
@@ -29,27 +39,52 @@ for i in range(25):
     plt.imshow(train_images[i], cmap=plt.cm.binary)
     plt.xlabel(class_names[train_labels[i]])
 plt.show()
+"""
 
+# Sinir ağlarını oluşturmak için basitleştirilmiş katmanlara ihtiyaç duyuyoruz aşağıda elimizdeki verileri daha basit katmanlara dönüştürüyoruz.
+
+# Sequential model oluşturuluyor. Bu model, katmanları sıralı bir şekilde bir araya getirir.
 model = tf.keras.Sequential([
-    tf.keras.layers.Flatten(input_shape = (28, 28)),
-    tf.keras.layers.Dense(128, activation='relu'),
-    tf.keras.layers.Dense(10)
+    # Flatten katmanı, 28x28 boyutundaki giriş verisini tek boyutlu bir vektöre düzleştirir.
+    tf.keras.layers.Flatten(input_shape=(28, 28)), 
+
+    # Dense katmanı, 128 nöron içerir ve 'relu' aktivasyon fonksiyonu kullanır.
+    tf.keras.layers.Dense(128, activation='relu'), 
+
+    # Dense katmanı, 10 nöron içerir. Bu katman, modelin çıkışını oluşturur.
+    # Bu örnekte, 10 nöron, çok sınıflı bir sınıflandırma problemi için kullanılır.
+    tf.keras.layers.Dense(10) 
 ])
 
-model.compile(optimizer = 'adam',
-              loss = tf.keras.losses.SparseCategoricalCrossent(from_logits = True),
-              metrics = ['accuracy'])
+# Modeli derleme işlemi
+model.compile(
+    # Optimizasyon algoritması belirlenir. 'adam' optimizasyonu, adaptif öğrenme hızlarıyla birlikte çok kullanılan bir optimizasyon algoritmasıdır.
+    optimizer='adam',
+
+    # Kayıp fonksiyonu belirlenir. Bu örnekte, Sparse Categorical Crossentropy kullanılır.
+    # Sparse Categorical Crossentropy, çok sınıflı sınıflandırma problemleri için yaygın olarak kullanılan bir kayıp fonksiyonudur.
+    loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+
+    # Modelin değerlendirilmesi için kullanılacak metrikler belirlenir. Bu örnekte, 'accuracy' (doğruluk) metriği kullanılır.
+    metrics=['accuracy']
+)
 
 
+# Modelin eğiltime işlemi bu kısımda gerçekleştirilir.
 model.fit(train_images, train_labels, epochs =10)
 
+# Modele verilen test verileri sayesinde başarı oranı ortaya çıkartılır.
 test_loss, test_acc = model.evaluate(test_images,  test_labels, verbose=2)
+#print('\nTest accuracy:', test_acc)
 
-print('\nTest accuracy:', test_acc)
+# Yeni bir model oluşturuluyor: 'probability_model'
+# Bu model, önceki modelin çıkışını alacak ve bu çıkışa softmax aktivasyonunu uygulayacaktır.
+probability_model = tf.keras.Sequential([
+    model,  # Önceki model (giriş verisi ve diğer katmanlar)
+    tf.keras.layers.Softmax()  # Softmax aktivasyonu, çıkışı olasılık dağılımına dönüştürür.
+])
 
-probability_model = tf.keras.Sequential([model, 
-                                         tf.keras.layers.Softmax()])
-
+# Test görüntüleri üzerinde tahminlerde bulunur.
 predictions = probability_model.predict(test_images)
 predictions[0]
 
@@ -87,7 +122,7 @@ def plot_value_array(i, predictions_array, true_label):
   thisplot[predicted_label].set_color('red')
   thisplot[true_label].set_color('blue')
 
-  i = 0
+i = 0
 plt.figure(figsize=(6,3))
 plt.subplot(1,2,1)
 plot_image(i, predictions[i], test_labels, test_images)
@@ -116,23 +151,3 @@ for i in range(num_images):
   plot_value_array(i, predictions[i], test_labels)
 plt.tight_layout()
 plt.show()
-
-# Grab an image from the test dataset.
-img = test_images[1]
-
-print(img.shape)
-
-# Add the image to a batch where it's the only member.
-img = (np.expand_dims(img,0))
-
-print(img.shape)
-
-predictions_single = probability_model.predict(img)
-
-print(predictions_single)
-
-plot_value_array(1, predictions_single[0], test_labels)
-_ = plt.xticks(range(10), class_names, rotation=45)
-plt.show()
-
-np.argmax(predictions_single[0])
